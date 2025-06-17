@@ -65,7 +65,7 @@ exports.getCandidateById = async(req,res)=>{
             error:err.message
         })
     }
-}
+};
 
 exports.updateCandidate = async(req,res)=>{
     try{
@@ -95,7 +95,7 @@ exports.updateCandidate = async(req,res)=>{
         error:err.message
        });
     }  
-}
+};
 
 exports.deleteCandidate = async(req,res)=>{
     try{
@@ -119,4 +119,4 @@ exports.deleteCandidate = async(req,res)=>{
             error:'Server Error'
         });
     };
-}
+};

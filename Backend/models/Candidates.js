@@ -21,7 +21,7 @@ const candidateSchema = new mongoose.Schema({
         type:mongoose.Schema.Types.ObjectId,
         ref:'Interview'
     }],
-    appliedAt:{type:Date,default:Date.now()},
+    appliedAt:{type:Date,default:Date.now},
 },{timestamps:true});
 
 module.exports = mongoose.model('Candidate',candidateSchema);

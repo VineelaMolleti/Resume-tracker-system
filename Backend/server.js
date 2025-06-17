@@ -26,3 +26,6 @@ then(()=>{
     console.log("Mongo Db Connected")
     app.listen(PORT,()=>console.log(`Server is running on ${PORT}`));
 }).catch(err=>console.log(err));
+
+const candidateRoutes = require('./routes/CandidateRoutes');
+app.use('/api/candidates',candidateRoutes);
