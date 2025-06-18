@@ -29,3 +29,9 @@ then(()=>{
 
 const candidateRoutes = require('./routes/CandidateRoutes');
 app.use('/api/candidates',candidateRoutes);
+
+const referralRoutes = require('./routes/ReferralsRoutes');
+app.use('/api/referrals',referralRoutes);
+
+const hiringRoutes = require('./routes/HiringTeamRoutes');
+app.use('/api/hiring',hiringRoutes);
