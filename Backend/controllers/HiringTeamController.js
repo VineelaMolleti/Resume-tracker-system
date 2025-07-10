@@ -4,7 +4,7 @@ const HiringTeam = require('../models/HiringTeam');
 
 exports.createTeamMember = async(req,res) => {
     try{
-        const existingMember = await HiringTeam.findOne({email:req.body.email});
+        const existingMember = await HiringTeam.findOne({email:req.body.email.toLowerCase()});
         if(existingMember) return sendError(res,400,'Member already exists');
         const createMember = await HiringTeam.create({
             ...req.body,
@@ -29,6 +29,9 @@ exports.getAllTeamMembers = async(req,res) => {
         if(req.query.department) filter.department = req.query.department;
         if(req.query.active) filter.isActive = req.query.active==='true';
         const getData = await HiringTeam.find(filter).sort({createdAt:-1});
+        if(getData.length===0) 
+            return sendSuccess(res,200,[],'No Team members found');
+        else
         return sendSuccess(res,200,getData,'Fetch All Team Members data successfully')
     }
     catch(err){
@@ -49,7 +52,7 @@ exports.getTeamMemberById = async(req,res) => {
 
 exports.updateTeamMember = async(req,res) => {
     try{
-        if(req.body.email) return sendError(res,400,'Email Can be changed through this endpoint')//Duplicates may occur
+        if(req.body.email) return sendError(res,400,'Email Cannot be changed through this endpoint')//Duplicates may occur
         const updatedMember = await HiringTeam.findByIdAndUpdate(
             req.params.id,
             req.body,
@@ -66,12 +69,14 @@ exports.updateTeamMember = async(req,res) => {
 //Activated/DeActivated member
 exports.deActivateTeamMember = async(req,res) => {
     try{
+        if(typeof req.body.isActive !=='boolean') 
+            return sendError(res,400,'isActive must be a boolean');
         const member = await HiringTeam.findByIdAndUpdate(
             req.params.id,
             {isActive:req.body.isActive},
             {new:true}
         );
-        if(!member) return sendError(res,400,'Team Member not found');
+        if(!member) return sendError(res,404,'Team Member not found');
         const status = member.isActive?'Activated':'DeActivated';
         return sendSuccess(res,200,member,`Team member ${status} successfully`);
     }
@@ -82,18 +87,24 @@ exports.deActivateTeamMember = async(req,res) => {
 
 exports.updatePermissions = async(req,res) =>{
     try{
+
+        const updateFields = {};
+        if('canSchedule' in req.body) updateFields['permissions.canSchedule'] = req.body.canSchedule;
+        if('canEvaluate' in req.body) updateFields['permissions.canEvaluate'] = req.body.canEvaluate;
+        if('canManageCandidates' in req.body) updateFields['permissions.canManageCandidates'] = req.body.canManageCandidates;
         const member = await HiringTeam.findByIdAndUpdate(
             req.params.id,
             {
-                $set:{
-                    'permissions.canSchedule':req.body.canSchedule,
-                    'permissions.canEvaluate':req.body.canEvaluate,
-                    'permissions.canManageCandidates':req.body.canManageCandidates
-                }
+                // $set:{
+                //     'permissions.canSchedule':req.body.canSchedule,
+                //     'permissions.canEvaluate':req.body.canEvaluate,
+                //     'permissions.canManageCandidates':req.body.canManageCandidates
+                // }
+                $set:updateFields
            },
            {new:true}
         );
-        if(!member) return sendError(res,400,'Team member not exists');
+        if(!member) return sendError(res,404,'Team member does not exists');
         return sendSuccess(res,200,member,'Updated permissions successfully');
     }
     catch(err){

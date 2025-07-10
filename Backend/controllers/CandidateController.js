@@ -1,4 +1,11 @@
 const Candidate = require('../model/candidateSchema');
+const sendError = require('../utilities/sendError');
+const sendSuccess = require('../utilities/sendSuccess');
+
+const sendEmail = require('../utilities/sendEmail');
+const createdCandidate = require('../utilities/emailTemplates/referral/createdCandidate');
+
+
 
 exports.createCandidate = async(req,res)=>{
     try{
@@ -10,18 +17,29 @@ exports.createCandidate = async(req,res)=>{
         status:req.body.status||'Applied'
     });
 
-    await candidate.save();
+    await candidate.save();//(or) const candidate = await Candidate.create(req.body);
 
-    res.status(201).json({
-        success:true,
-        date : candidate
-    });
+    try{
+        await sendEmail({
+            to:candidate.email,
+            subject:"You've been added as a candidate!",
+            html:createdCandidate(candidate.name)
+        });
+    }
+    catch(emailErr){
+        console.error('Email failed: ',emailErr.message);
+    }
+
+    sendSuccess(res,201,candidate,'Created candidate successfully');
   }
   catch(err){
-    res.status(400).json({
-        success:false,
-        error:err.message
-    });
+    if(err.code === 11000 && err.keyPattern?.email){
+        return sendError(res,400,'Email already exists');
+    }
+    if(err.name === 'ValidationError'){
+        return sendError(res,400,err.message);
+    }
+    sendError(res,500,'Internal Server Error');
   }
 };
 
@@ -48,10 +66,7 @@ exports.getCandidateById = async(req,res)=>{
         const candidate = await Candidate.findById(req.params.id);
         
         if(!candidate){
-            return res.status(404).json({
-                success:false,
-                error:'Candidate not found'
-            });
+            return sendError(res,404,'Candidate Not Found');
         }
 
         res.status(200).json({
@@ -60,10 +75,10 @@ exports.getCandidateById = async(req,res)=>{
         });
     }
     catch(err){
-        res.status(500).json({
-            success:false,
-            error:err.message
-        })
+        if(err.name === 'CastError'){
+            return sendError(res,400,'Invalid Candidate ID');
+        }
+        sendError(res,500,err.message);
     }
 };
 
@@ -90,13 +105,54 @@ exports.updateCandidate = async(req,res)=>{
         });
     }
     catch(err){
-        res.status(400).json({
-        success:false,
-        error:err.message
-       });
-    }  
+    if(err.code === 11000){
+        return sendError(res,400,'Duplicate field exists');
+    }
+    if(err.name === 'ValidationError'){
+        return sendError(res,400,err.message);
+    }
+    sendError(res,500,'Internal Server Error');
+  }
 };
 
+exports.updateCandidateStatus = async(req,res) =>{
+    try{
+        const allowedStatuses = ['Applied', 'Interviewing', 'Hold', 'Accepted', 'Rejected', 'Shortlisted'];
+        const status = req.body.status;
+
+         if (!allowedStatuses.includes(status)) {
+            return sendError(res, 400, 'Invalid status value');
+        }     
+
+        const candidate = await Candidate.findByIdAndUpdate(
+            req.params.id,
+            {status},
+            {new:true,
+                runValidators:true
+            }
+        );
+        if(!candidate){
+            return res.status(404).json({
+                success:false,
+                error:'Candidate Not Found'
+            });
+        }
+
+        res.status(200).json({
+            success:true,
+            data:candidate
+        });
+    }
+    catch(err){
+    if(err.code === 11000){
+        return sendError(res,400,'Duplicate field exists');
+    }
+    if(err.name === 'ValidationError'){
+        return sendError(res,400,err.message);
+    }
+    sendError(res,500,'Internal Server Error');
+  }
+}
 exports.deleteCandidate = async(req,res)=>{
     try{
         const candidate = await Candidate.findByIdAndDelete(req.params.id);
@@ -109,7 +165,8 @@ exports.deleteCandidate = async(req,res)=>{
 
         res.status(200).json({
             success:true,
-            data:{}
+            message:'Candidate Deleted Successfully',
+            data:candidate
         });
 
     }
